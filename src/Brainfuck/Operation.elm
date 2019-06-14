@@ -1,4 +1,4 @@
-module Brainfuck.Operation exposing (..)
+module Brainfuck.Operation exposing (Operation(..), parse)
 
 type Operation
     = PInc
@@ -11,7 +11,7 @@ type Operation
 
 
 parse : String -> Result String (List (Operation))
-parse = Debug.todo ""
+parse program = parseListChar (String.toList program) []
 
 parseListChar : List Char -> List (Operation) -> Result String (List (Operation))
 parseListChar chars ops =
@@ -43,7 +43,7 @@ parseListChar chars ops =
                 Just op ->
                     parseListChar xs (op :: ops)
                 Nothing ->
-                    Debug.todo "todo '[' ? "
+                    parseListChar xs ops
 
 parseWhile : List Char -> List Operation -> Result String (Operation, (List Char))
 parseWhile chars ops =
