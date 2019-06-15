@@ -1,4 +1,4 @@
-module Brainfuck exposing (Model, exec)
+module Brainfuck exposing (Model, init, execAll, exec)
 
 import Array exposing (Array)
 import Brainfuck.Operation as Operation exposing (Operation(..))
@@ -15,6 +15,23 @@ type alias Model =
     , outputString : String
     }
 
+
+init : Int -> Model
+init arraySize =
+    { memory = Array.repeat arraySize 0
+    , pointer = 0
+    , operationQueue = Queue.empty
+    , waitingInput = False
+    , inputQueue = Queue.empty
+    , outputString = ""
+    }
+
+input : Char -> Model -> Model
+input char model =
+    { model | inputQueue = Queue.enqueue char model.inputQueue }
+
+execAll : List Operation -> Model -> Model
+execAll ops model = List.foldl exec model ops
 
 exec : Operation -> Model -> Model
 exec op model =
@@ -65,7 +82,17 @@ exec op model =
                 { model | outputString = model.outputString ++ str }
 
             While ops ->
-                Debug.todo "impl"
+                if getWhileCond model then
+                    let
+                        appliedModel =
+                            execAll ops model
+                    in
+                    -- Whileの中でread待ちになったらoperationQueueにWhile本体が積まれないが、ここで再実行すればoperationQueueに積まれる
+                    -- 待ちになっていなくても再実行することで条件の再判定ごと行われるため繰り返し処理となる
+                    exec op appliedModel
+
+                else
+                    model
 
 
 getMem : Model -> Maybe Byte
@@ -76,3 +103,10 @@ getMem model =
 setMem : Byte -> Model -> Model
 setMem v model =
     { model | memory = Array.set model.pointer v model.memory }
+
+
+getWhileCond : Model -> Bool
+getWhileCond model =
+    getMem model
+        |> Maybe.map (\v -> v /= 0)
+        |> Maybe.withDefault False
