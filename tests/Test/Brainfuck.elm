@@ -24,7 +24,7 @@ suite =
                         |> .memory
                         |> Expect.equal (Array.fromList [0, 0, 0, 0, 0])
             ]
-        , describe "exec"
+        , describe "exec, execAll"
             [ test "ポインタ、メモリに対する操作を実行できる" <|
                 \run ->
                     let
@@ -119,5 +119,33 @@ suite =
                     ]
                 ]
             ]
-
+        , describe "input" <|
+            let
+                modelForInput = Brainfuck.init 1
+            in
+            [ test "read待ちでなければinputQueueに追加する" <|
+                \run ->
+                    modelForInput
+                        |> Brainfuck.input 'a'
+                        |> .inputQueue
+                        |> Queue.toList
+                        |> Expect.equal ['a']
+            , describe "read待ちならプログラムが進行する"
+                [ test "普通のread待ち" <|
+                    \run ->
+                        modelForInput
+                            |> Brainfuck.execAll [Read, PInc, VInc]
+                            |> Brainfuck.input 'a'
+                            |> Expect.equal
+                                { modelForInput
+                                    | memory = Array.fromList [Char.toCode 'a']
+                                    , pointer = 1
+                                }
+                , test "While内でread待ち" <|
+                    \run ->
+                        modelForInput
+                            |> Brainfuck.execAll [Read]
+                            |> Brainfuck.input ''
+                ]
+            ]
         ]

@@ -1,4 +1,4 @@
-module Brainfuck exposing (Model, init, execAll, exec)
+module Brainfuck exposing (Model, init, exec, execAll, input)
 
 import Array exposing (Array)
 import Brainfuck.Operation as Operation exposing (Operation(..))
@@ -26,12 +26,29 @@ init arraySize =
     , outputString = ""
     }
 
+
 input : Char -> Model -> Model
 input char model =
-    { model | inputQueue = Queue.enqueue char model.inputQueue }
+    if model.waitingInput then
+        execAll
+            (Queue.toList model.operationQueue)
+            { model
+                | inputQueue = Queue.enqueue char model.inputQueue
+                , operationQueue = Queue.fromList []
+                , waitingInput = False
+            }
+
+    else
+        { model
+            | inputQueue = Queue.enqueue char model.inputQueue
+            , waitingInput = False
+        }
+
 
 execAll : List Operation -> Model -> Model
-execAll ops model = List.foldl exec model ops
+execAll ops model =
+    List.foldl exec model ops
+
 
 exec : Operation -> Model -> Model
 exec op model =
