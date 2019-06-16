@@ -29,7 +29,6 @@ main =
 type alias Model =
     { brainfuck : Brainfuck.Model
     , program : String
-    , input : String
     }
 
 
@@ -41,7 +40,6 @@ init : () -> ( Model, Cmd Msg )
 init _ =
     ( { brainfuck = Brainfuck.init defaultArrayLength
       , program = ""
-      , input = ""
       }
     , Cmd.none
     )
@@ -100,7 +98,14 @@ update msg model =
                     )
 
         OnInput input ->
-            ( { model | input = input }
+            let
+                chars =
+                    String.toList input
+
+                newBrainfuck =
+                    List.foldl Brainfuck.input model.brainfuck chars
+            in
+            ( { model | brainfuck = newBrainfuck }
             , Cmd.none
             )
 
@@ -125,11 +130,22 @@ view model =
                         , onPress = Just OnClickExecuteButton
                         }
                 , el [] <|
+                    let
+                        labelText =
+                            "プログラムへ入力する"
+
+                        label =
+                            if model.brainfuck.waitingInput then
+                                labelText ++ " !!"
+
+                            else
+                                labelText
+                    in
                     Input.text []
                         { onChange = OnInput
-                        , text = model.input
+                        , text = ""
                         , placeholder = Nothing
-                        , label = Input.labelLeft [] <| text "プログラムへ入力する"
+                        , label = Input.labelLeft [] <| text label
                         }
                 , el [] <|
                     Input.multiline []
