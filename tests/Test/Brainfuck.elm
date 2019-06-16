@@ -121,7 +121,7 @@ suite =
             ]
         , describe "input" <|
             let
-                modelForInput = Brainfuck.init 1
+                modelForInput = Brainfuck.init 2
             in
             [ test "read待ちでなければinputQueueに追加する" <|
                 \run ->
@@ -138,14 +138,19 @@ suite =
                             |> Brainfuck.input 'a'
                             |> Expect.equal
                                 { modelForInput
-                                    | memory = Array.fromList [Char.toCode 'a']
+                                    | memory = Array.fromList [Char.toCode 'a', 1]
                                     , pointer = 1
                                 }
                 , test "While内でread待ち" <|
                     \run ->
                         modelForInput
-                            |> Brainfuck.execAll [Read]
-                            |> Brainfuck.input ''
+                            |> Brainfuck.execAll [VInc, While[PInc, Read, PDec, VDec], Read]
+                            |> Brainfuck.input 'A'
+                            |> Brainfuck.input 'Z'
+                            |> Expect.equal
+                                { modelForInput
+                                    | memory = Array.fromList [Char.toCode 'Z', Char.toCode 'A']
+                                }
                 ]
             ]
         ]
