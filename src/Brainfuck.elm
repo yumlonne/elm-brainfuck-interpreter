@@ -1,4 +1,4 @@
-module Brainfuck exposing (Model, init, exec, execAll, input)
+module Brainfuck exposing (Model, exec, execAll, init, input)
 
 import Array exposing (Array)
 import Brainfuck.Operation as Operation exposing (Operation(..))

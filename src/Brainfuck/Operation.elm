@@ -1,5 +1,6 @@
 module Brainfuck.Operation exposing (Operation(..), parse)
 
+
 type Operation
     = PInc
     | PDec
@@ -10,10 +11,12 @@ type Operation
     | While (List Operation)
 
 
-parse : String -> Result String (List (Operation))
-parse program = parseListChar (String.toList program) []
+parse : String -> Result String (List Operation)
+parse program =
+    parseListChar (String.toList program) []
 
-parseListChar : List Char -> List (Operation) -> Result String (List (Operation))
+
+parseListChar : List Char -> List Operation -> Result String (List Operation)
 parseListChar chars ops =
     case chars of
         [] ->
@@ -21,10 +24,11 @@ parseListChar chars ops =
 
         '[' :: xs ->
             let
-                result = parseWhile xs []
+                result =
+                    parseWhile xs []
             in
             case result of
-                Ok (op, taked) ->
+                Ok ( op, taked ) ->
                     parseListChar taked (op :: ops)
 
                 -- TODO: 何文字目とか出してもいいかも
@@ -37,64 +41,79 @@ parseListChar chars ops =
 
         c :: xs ->
             let
-                maybeOp = fromChar c
+                maybeOp =
+                    fromChar c
             in
             case maybeOp of
                 Just op ->
                     parseListChar xs (op :: ops)
+
                 Nothing ->
                     parseListChar xs ops
 
-parseWhile : List Char -> List Operation -> Result String (Operation, (List Char))
+
+parseWhile : List Char -> List Operation -> Result String ( Operation, List Char )
 parseWhile chars ops =
-    case (chars, ops) of
+    case ( chars, ops ) of
         -- 対応するカッコが見つからない
-        ([], _) ->
+        ( [], _ ) ->
             Err "[]の対応がおかしいよ！"
 
-
         -- 対応するカッコまで来た
-        (']' :: xs, res) ->
+        ( ']' :: xs, res ) ->
             let
-                op = While <| List.reverse res
+                op =
+                    While <| List.reverse res
             in
-            Ok (op, xs)
-
+            Ok ( op, xs )
 
         -- ネストしてやがる
-        ('[' :: xs, _) ->
+        ( '[' :: xs, _ ) ->
             let
-                nestedWhileOp = parseWhile xs []
+                nestedWhileOp =
+                    parseWhile xs []
             in
             case nestedWhileOp of
-                Ok (op, taked) ->
+                Ok ( op, taked ) ->
                     parseWhile taked (op :: ops)
 
                 Err msg ->
                     Err msg
 
-
         -- その他普通のOperationまたは無効文字
-        (char :: xs, _) ->
+        ( char :: xs, _ ) ->
             let
-                maybeOp = fromChar char
+                maybeOp =
+                    fromChar char
             in
             case maybeOp of
                 Just op ->
                     parseWhile xs (op :: ops)
+
                 Nothing ->
                     parseWhile xs ops
-
-
 
 
 fromChar : Char -> Maybe Operation
 fromChar c =
     case c of
-        '>' -> Just PInc
-        '<' -> Just PDec
-        '+' -> Just VInc
-        '-' -> Just VDec
-        ',' -> Just Read
-        '.' -> Just Print
-        _ -> Nothing
+        '>' ->
+            Just PInc
+
+        '<' ->
+            Just PDec
+
+        '+' ->
+            Just VInc
+
+        '-' ->
+            Just VDec
+
+        ',' ->
+            Just Read
+
+        '.' ->
+            Just Print
+
+        _ ->
+            Nothing
