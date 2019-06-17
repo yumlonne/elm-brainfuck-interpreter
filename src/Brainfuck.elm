@@ -1,7 +1,7 @@
-module Brainfuck exposing (Model, exec, execAll, init, input)
+module Brainfuck exposing (Model, exec, execAll, execOptimized, execOptimizedAll, init, input)
 
 import Array exposing (Array)
-import Brainfuck.Operation as Operation exposing (Operation(..))
+import Brainfuck.Operation as Operation exposing (Operation(..), OptimizedOperation(..))
 import Data.Byte as Byte exposing (Byte)
 import Queue exposing (Queue)
 
@@ -110,6 +110,43 @@ exec op model =
 
                 else
                     model
+
+
+execOptimized : OptimizedOperation -> Model -> Model
+execOptimized optimizedOp model =
+    if model.waitingInput then
+        { model | operationQueue = Queue.enqueue op model.operationQueue }
+
+    else
+        case optimizedOp of
+            OptimizedPointerAdd num ->
+                { model | pointer = model.pointer + num }
+
+            OptimizedValueAdd num ->
+                getMem model
+                    |> Maybe.map (\x -> setMem (Byte.add x num) model)
+                    |> Maybe.withDefault model
+
+            OptimizedZeroClear ->
+                setMem 0 model
+
+            OptimizedWhile optimizedOps ->
+                if getWhileCond model then
+                    let
+                        appliedModel =
+                            execOptimizedAll optimizedOps model
+                    in
+                    execOptimized optimizedOp appliedModel
+                else
+                    model
+
+            BasicOperation basicOp ->
+                exec basicOp model
+
+
+execOptimizedAll : List OptimizedOperation -> Model -> Model
+execOptimizedAll optimizedOps model =
+    List.foldl execOptimized model optimizedOps
 
 
 getMem : Model -> Maybe Byte

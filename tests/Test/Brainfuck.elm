@@ -2,7 +2,7 @@ module Test.Brainfuck exposing (suite)
 
 import Array
 import Brainfuck
-import Brainfuck.Operation as Operation exposing (Operation(..))
+import Brainfuck.Operation as Operation exposing (Operation(..), OptimizedOperation(..))
 import Expect exposing (Expectation)
 import Fuzz exposing (Fuzzer, int, list, string)
 import Queue
@@ -136,6 +136,34 @@ suite =
                                    )
                     ]
                 ]
+            ]
+        , describe "execOptimized" <|
+            let
+                modelForExecOptimized =
+                    Brainfuck.init 2
+            in
+            [ test "OptimizedPointerAdd n はポインタにnを加える" <|
+                \run ->
+                    modelForExecOptimized
+                        |> Brainfuck.execOptimized (OptimizedPointerAdd 10)
+                        |> Expect.equal
+                            { modelForExecOptimized
+                                | pointer = 10
+                            }
+            , test "OptimizedValueAdd n はフォーカスしているメモリにnを加える" <|
+                \run ->
+                    modelForExecOptimized
+                        |> Brainfuck.execOptimized (OptimizedValueAdd 17)
+                        |> Expect.equal
+                            { modelForExecOptimized
+                                | memory = Array.fromList [17, 0]
+                            }
+            , test "OptimizedZeroClearはフォーカスしているメモリをゼロクリアする" <|
+                \run ->
+                    modelForExecOptimized
+                        |> Brainfuck.execOptimized (OptimizedValueAdd 255)
+                        |> Brainfuck.execOptimized (OptimizedZeroClear)
+                        |> Expect.equal modelForExecOptimized
             ]
         , describe "input" <|
             let

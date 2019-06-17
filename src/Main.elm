@@ -86,13 +86,13 @@ update msg model =
         OnClickExecuteButton ->
             let
                 parsed =
-                    Operation.parse model.program
+                    Debug.log "parsed program" <| Operation.optimizedParse model.program
             in
             case parsed of
                 Ok ops ->
                     let
                         newBrainfuck =
-                            Brainfuck.execAll ops model.brainfuck
+                            Brainfuck.execOptimizedAll ops model.brainfuck
                     in
                     ( { model | brainfuck = newBrainfuck, errorMsg = "" }
                     , Cmd.none

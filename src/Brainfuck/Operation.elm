@@ -1,4 +1,6 @@
-module Brainfuck.Operation exposing (Operation(..), parse)
+module Brainfuck.Operation exposing (Operation(..), OptimizedOperation(..), optimizedParse, parse)
+
+import List.Extra
 
 
 type Operation
@@ -11,9 +13,27 @@ type Operation
     | While (List Operation)
 
 
+
+-- +-,><と[-]は最適化できる
+
+
+type OptimizedOperation
+    = OptimizedPointerAdd Int
+    | OptimizedValueAdd Int
+    | OptimizedZeroClear
+    | OptimizedWhile (List OptimizedOperation)
+    | BasicOperation Operation
+
+
 parse : String -> Result String (List Operation)
 parse program =
     parseListChar (String.toList program) []
+
+
+optimizedParse : String -> Result String (List OptimizedOperation)
+optimizedParse program =
+    parse program
+        |> Result.map optimize
 
 
 parseListChar : List Char -> List Operation -> Result String (List Operation)
@@ -117,3 +137,114 @@ fromChar c =
 
         _ ->
             Nothing
+
+
+optimize : List Operation -> List OptimizedOperation
+optimize ops =
+    optimizeHelper ops []
+
+
+optimizeHelper : List Operation -> List OptimizedOperation -> List OptimizedOperation
+optimizeHelper ops optimized =
+    case ops of
+        [] ->
+            List.reverse optimized
+
+        op :: xs ->
+            case op of
+                While [ VDec ] ->
+                    optimizeHelper xs <| OptimizedZeroClear :: optimized
+
+                While basicOps ->
+                    optimizeHelper xs <| (OptimizedWhile <| optimize basicOps) :: optimized
+
+                PInc ->
+                    let
+                        ( incs, other ) =
+                            List.Extra.span (\x -> x == PInc || x == PDec) xs
+
+                        incrementNum =
+                            List.foldl (\x num -> num + toIncrementNum x) 1 incs
+
+                        optimizedOperations =
+                            if incrementNum == 0 then
+                                optimized
+
+                            else
+                                OptimizedPointerAdd incrementNum :: optimized
+                    in
+                    optimizeHelper other optimizedOperations
+
+                PDec ->
+                    let
+                        ( incs, other ) =
+                            List.Extra.span (\x -> x == PInc || x == PDec) xs
+
+                        incrementNum =
+                            List.foldl (\x num -> num + toIncrementNum x) -1 incs
+
+                        optimizedOperations =
+                            if incrementNum == 0 then
+                                optimized
+
+                            else
+                                OptimizedPointerAdd incrementNum :: optimized
+                    in
+                    optimizeHelper other optimizedOperations
+
+                VInc ->
+                    let
+                        ( incs, other ) =
+                            List.Extra.span (\x -> x == VInc || x == VDec) xs
+
+                        incrementNum =
+                            List.foldl (\x num -> num + toIncrementNum x) 1 incs
+
+                        optimizedOperations =
+                            if incrementNum == 0 then
+                                optimized
+
+                            else
+                                OptimizedValueAdd incrementNum :: optimized
+                    in
+                    optimizeHelper other optimizedOperations
+
+                VDec ->
+                    let
+                        ( incs, other ) =
+                            List.Extra.span (\x -> x == VInc || x == VDec) xs
+
+                        incrementNum =
+                            List.foldl (\x num -> num + toIncrementNum x) -1 incs
+
+                        optimizedOperations =
+                            if incrementNum == 0 then
+                                optimized
+
+                            else
+                                OptimizedValueAdd incrementNum :: optimized
+                    in
+                    optimizeHelper other optimizedOperations
+
+                _ ->
+                    optimizeHelper xs <| BasicOperation op :: optimized
+
+
+toIncrementNum : Operation -> Int
+toIncrementNum op =
+    case op of
+        PInc ->
+            1
+
+        PDec ->
+            -1
+
+        VInc ->
+            1
+
+        VDec ->
+            -1
+
+        -- 少し嫌な感じがしつつ
+        _ ->
+            0
