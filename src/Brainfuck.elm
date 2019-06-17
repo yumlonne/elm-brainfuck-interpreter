@@ -1,7 +1,7 @@
-module Brainfuck exposing (Model, exec, execAll, execOptimized, execOptimizedAll, init, input)
+module Brainfuck exposing (Model, exec, execAll, init, input)
 
 import Array exposing (Array)
-import Brainfuck.Operation as Operation exposing (Operation(..), OptimizedOperation(..))
+import Brainfuck.Operation as Operation exposing (Operation(..))
 import Data.Byte as Byte exposing (Byte)
 import Queue exposing (Queue)
 
@@ -57,18 +57,11 @@ exec op model =
 
     else
         case op of
-            PInc ->
-                { model | pointer = model.pointer + 1 }
+            PAdd n ->
+                { model | pointer = model.pointer + n }
 
-            PDec ->
-                -- XXX: 負数になっちゃうかもだけどそれはプログラムのミス
-                { model | pointer = model.pointer - 1 }
-
-            VInc ->
-                setMem (Maybe.withDefault 0 <| Maybe.map Byte.increment <| getMem model) model
-
-            VDec ->
-                setMem (Maybe.withDefault 0 <| Maybe.map Byte.decrement <| getMem model) model
+            VAdd n ->
+                setMem (Maybe.withDefault 0 <| Maybe.map (Byte.add n) <| getMem model) model
 
             Read ->
                 case Queue.dequeue model.inputQueue of
@@ -111,42 +104,8 @@ exec op model =
                 else
                     model
 
-
-execOptimized : OptimizedOperation -> Model -> Model
-execOptimized optimizedOp model =
-    if model.waitingInput then
-        { model | operationQueue = Queue.enqueue op model.operationQueue }
-
-    else
-        case optimizedOp of
-            OptimizedPointerAdd num ->
-                { model | pointer = model.pointer + num }
-
-            OptimizedValueAdd num ->
-                getMem model
-                    |> Maybe.map (\x -> setMem (Byte.add x num) model)
-                    |> Maybe.withDefault model
-
-            OptimizedZeroClear ->
+            ZeroClear ->
                 setMem 0 model
-
-            OptimizedWhile optimizedOps ->
-                if getWhileCond model then
-                    let
-                        appliedModel =
-                            execOptimizedAll optimizedOps model
-                    in
-                    execOptimized optimizedOp appliedModel
-                else
-                    model
-
-            BasicOperation basicOp ->
-                exec basicOp model
-
-
-execOptimizedAll : List OptimizedOperation -> Model -> Model
-execOptimizedAll optimizedOps model =
-    List.foldl execOptimized model optimizedOps
 
 
 getMem : Model -> Maybe Byte

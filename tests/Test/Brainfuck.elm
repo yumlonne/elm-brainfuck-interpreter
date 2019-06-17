@@ -2,7 +2,7 @@ module Test.Brainfuck exposing (suite)
 
 import Array
 import Brainfuck
-import Brainfuck.Operation as Operation exposing (Operation(..), OptimizedOperation(..))
+import Brainfuck.Operation as Operation exposing (Operation(..))
 import Expect exposing (Expectation)
 import Fuzz exposing (Fuzzer, int, list, string)
 import Queue
@@ -33,7 +33,7 @@ suite =
                             Brainfuck.init 3
 
                         ops =
-                            [ VInc, PInc, VInc, VInc, VDec, PInc, PInc, PDec ]
+                            [ VAdd 1, PAdd 1, VAdd 1, PAdd 1 ]
                     in
                     model
                         |> Brainfuck.execAll ops
@@ -98,12 +98,12 @@ suite =
                     [ test "0ならまるまるスキップ" <|
                         \run ->
                             modelForWhile
-                                |> Brainfuck.exec (While [ VInc ])
+                                |> Brainfuck.exec (While [ VAdd 1 ])
                                 |> Expect.equal modelForWhile
                     , test "0以外なら実行" <|
                         \run ->
                             modelForWhile
-                                |> Brainfuck.execAll [ VInc, While [ PInc, VInc, PDec, VDec ] ]
+                                |> Brainfuck.execAll [ VAdd 1, While [ PAdd 1, VAdd 1, PAdd -1, VAdd -1 ] ]
                                 |> Expect.equal
                                     { modelForWhile
                                         | memory = Array.fromList [ 0, 1, 0, 0, 0 ]
@@ -115,8 +115,8 @@ suite =
                             modelForWhile
                                 -- 繰り返しによる足し算(1 + 2)
                                 -- https://tondol.hatenablog.jp/entry/20100630/1277839735
-                                |> Brainfuck.execAll [ VInc, PInc, VInc, VInc, PDec ]
-                                |> Brainfuck.execAll [ PInc, While [ VDec, PDec, VInc, PInc ], PDec ]
+                                |> Brainfuck.execAll [ VAdd 1, PAdd 1, VAdd 2, PAdd -1 ]
+                                |> Brainfuck.execAll [ PAdd 1, While [ VAdd -1, PAdd -1, VAdd 1, PAdd 1 ], PAdd -1 ]
                                 |> Expect.equal
                                     { modelForWhile
                                         | memory = Array.fromList [ 3, 0, 0, 0, 0 ]
@@ -125,44 +125,44 @@ suite =
                         \run ->
                             modelForWhile
                                 -- While発火用のVInc
-                                |> Brainfuck.exec VInc
-                                |> Brainfuck.exec (While [ Read, PInc, VInc ])
+                                |> Brainfuck.exec (VAdd 1)
+                                |> Brainfuck.exec (While [ Read, PAdd 1, VAdd 1 ])
                                 |> (\m ->
                                         ( m.waitingInput, Queue.toList m.operationQueue )
                                             |> Expect.equal
                                                 ( True
-                                                , [ Read, PInc, VInc, While [ Read, PInc, VInc ] ]
+                                                , [ Read, PAdd 1, VAdd 1, While [ Read, PAdd 1, VAdd 1 ] ]
                                                 )
                                    )
                     ]
                 ]
             ]
-        , describe "execOptimized" <|
+        , describe "optimized check" <|
             let
                 modelForExecOptimized =
                     Brainfuck.init 2
             in
-            [ test "OptimizedPointerAdd n はポインタにnを加える" <|
+            [ test "PAdd n はポインタにnを加える" <|
                 \run ->
                     modelForExecOptimized
-                        |> Brainfuck.execOptimized (OptimizedPointerAdd 10)
+                        |> Brainfuck.exec (PAdd 10)
                         |> Expect.equal
                             { modelForExecOptimized
                                 | pointer = 10
                             }
-            , test "OptimizedValueAdd n はフォーカスしているメモリにnを加える" <|
+            , test "VAdd n はフォーカスしているメモリにnを加える" <|
                 \run ->
                     modelForExecOptimized
-                        |> Brainfuck.execOptimized (OptimizedValueAdd 17)
+                        |> Brainfuck.exec (VAdd 17)
                         |> Expect.equal
                             { modelForExecOptimized
-                                | memory = Array.fromList [17, 0]
+                                | memory = Array.fromList [ 17, 0 ]
                             }
-            , test "OptimizedZeroClearはフォーカスしているメモリをゼロクリアする" <|
+            , test "ZeroClearはフォーカスしているメモリをゼロクリアする" <|
                 \run ->
                     modelForExecOptimized
-                        |> Brainfuck.execOptimized (OptimizedValueAdd 255)
-                        |> Brainfuck.execOptimized (OptimizedZeroClear)
+                        |> Brainfuck.exec (VAdd 255)
+                        |> Brainfuck.exec ZeroClear
                         |> Expect.equal modelForExecOptimized
             ]
         , describe "input" <|
@@ -181,7 +181,7 @@ suite =
                 [ test "普通のread待ち" <|
                     \run ->
                         modelForInput
-                            |> Brainfuck.execAll [ Read, PInc, VInc ]
+                            |> Brainfuck.execAll [ Read, PAdd 1, VAdd 1 ]
                             |> Brainfuck.input 'a'
                             |> Expect.equal
                                 { modelForInput
@@ -191,7 +191,7 @@ suite =
                 , test "While内でread待ち" <|
                     \run ->
                         modelForInput
-                            |> Brainfuck.execAll [ VInc, While [ PInc, Read, PDec, VDec ], Read ]
+                            |> Brainfuck.execAll [ VAdd 1, While [ PAdd 1, Read, PAdd -1, VAdd -1 ], Read ]
                             |> Brainfuck.input 'A'
                             |> Brainfuck.input 'Z'
                             |> Expect.equal
