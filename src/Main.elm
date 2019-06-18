@@ -86,7 +86,7 @@ update msg model =
         OnClickExecuteButton ->
             let
                 parsed =
-                    Debug.log "parsed program" <| Operation.parse model.program
+                    Operation.parse model.program
             in
             case parsed of
                 Ok ops ->
